@@ -1,11 +1,15 @@
-
 #include "cmsis_os2.h"
 #include "GUI.h"
 #include "DIALOG.h"
+#include "temp.h"
+
+// Make sure this matches the ID from your GUI Builder!
+#define ID_PROGBAR_0 (GUI_ID_USER + 0x01) 
 
 extern WM_HWIN CreateLogViewer(void);
+
 /*----------------------------------------------------------------------------
- *      GUIThread: GUI Thread for Single-Task Execution Model
+ * GUIThread: GUI Thread for Single-Task Execution Model
  *---------------------------------------------------------------------------*/
 #define GUI_THREAD_STK_SZ    (4096U)
 
@@ -33,16 +37,24 @@ __NO_RETURN static void GUIThread (void *argument) {
   (void)argument;
 
   GUI_Init();           /* Initialize the Graphics Component */
-	//GUI_DispString("Hello World!");
-	WM_HWIN hWin = CreateLogViewer();
+  
+  WM_HWIN hWin = CreateLogViewer();
 
-  /* Add GUI setup code here */
+  // Get the handle for your new Progress Bar widget
+  WM_HWIN hProgbar = WM_GetDialogItem(hWin, ID_PROGBAR_0);
+  
+  // Variable to hold the temperature 
+  uint8_t temp = 0; 
 
   while (1) {
-    
-    /* All GUI related activities might only be called from here */
-		GUI_TOUCH_Exec();
-    GUI_Exec();         /* Execute all GUI jobs ... Return 0 if nothing was done. */
+    // Read the I2C sensor to get the latest temperature 
+    Temp_Read (&temp); 
+
+    // Update the Progress Bar directly with the raw temperature integer!
+    PROGBAR_SetValue(hProgbar, temp);
+
+    GUI_TOUCH_Exec(); 
+    GUI_Exec();         /* Execute all GUI jobs ... Return 0 if nothing was done. */ 
     GUI_X_ExecIdle();   /* Nothing left to do for the moment ... Idle processing */
   }
 }

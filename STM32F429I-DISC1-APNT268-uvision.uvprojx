@@ -485,6 +485,16 @@
               <FileType>1</FileType>
               <FilePath>.\USBH_MSC.c</FilePath>
             </File>
+            <File>
+              <FileName>temp.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\temp.c</FilePath>
+            </File>
+            <File>
+              <FileName>temp.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\temp.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
