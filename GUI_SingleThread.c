@@ -48,7 +48,7 @@ __NO_RETURN static void GUIThread (void *argument) {
 
   while (1) {
     // Read the I2C sensor to get the latest temperature 
-    Temp_Read (&temp); 
+   // Temp_Read (&temp); 
 
     // Update the Progress Bar directly with the raw temperature integer!
     PROGBAR_SetValue(hProgbar, temp);
