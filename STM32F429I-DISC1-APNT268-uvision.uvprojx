@@ -495,6 +495,11 @@
               <FileType>5</FileType>
               <FilePath>.\temp.h</FilePath>
             </File>
+            <File>
+              <FileName>FramewinDLG.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\RTE\Graphics\FramewinDLG.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
