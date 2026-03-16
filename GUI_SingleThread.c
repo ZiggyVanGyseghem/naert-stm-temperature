@@ -2,20 +2,24 @@
 #include "GUI.h"
 #include "DIALOG.h"
 #include "temp.h"
+#include <stdio.h> 
+#include "cmsis_vio.h" 
 
-// Make sure this matches the ID from your GUI Builder!
-#define ID_PROGBAR_0 (GUI_ID_USER + 0x01) 
+#define ID_PROGBAR_TC74    (GUI_ID_USER + 0x01)
+#define ID_TEXT_TC74       (GUI_ID_USER + 0x03)
+#define ID_TEXT_THRESH     (GUI_ID_USER + 0x06)
+
+// The variables controlling the system
+int auto_mode = 1;         
+int manual_fan_state = 0;  
+int fan_threshold = 25; // Default starts at 25C
 
 extern WM_HWIN CreateLogViewer(void);
 
-/*----------------------------------------------------------------------------
- * GUIThread: GUI Thread for Single-Task Execution Model
- *---------------------------------------------------------------------------*/
 #define GUI_THREAD_STK_SZ    (4096U)
-
-static void         GUIThread (void *argument);         /* thread function */
-static osThreadId_t GUIThread_tid;                      /* thread id */
-static uint64_t     GUIThread_stk[GUI_THREAD_STK_SZ/8]; /* thread stack */
+static void         GUIThread (void *argument);         
+static osThreadId_t GUIThread_tid;                      
+static uint64_t     GUIThread_stk[GUI_THREAD_STK_SZ/8]; 
 
 static const osThreadAttr_t GUIThread_attr = {
   .stack_mem  = &GUIThread_stk[0],
@@ -24,37 +28,59 @@ static const osThreadAttr_t GUIThread_attr = {
 };
 
 int Init_GUIThread (void) {
-
   GUIThread_tid = osThreadNew(GUIThread, NULL, &GUIThread_attr);
-  if (GUIThread_tid == NULL) {
-    return(-1);
-  }
-
+  if (GUIThread_tid == NULL) return(-1);
   return(0);
 }
 
 __NO_RETURN static void GUIThread (void *argument) {
   (void)argument;
 
-  GUI_Init();           /* Initialize the Graphics Component */
+  vioInit(); 
+  GUI_Init();           
   
   WM_HWIN hWin = CreateLogViewer();
 
-  // Get the handle for your new Progress Bar widget
-  WM_HWIN hProgbar = WM_GetDialogItem(hWin, ID_PROGBAR_0);
+  WM_HWIN hProgTC74 = WM_GetDialogItem(hWin, ID_PROGBAR_TC74);
+  WM_HWIN hTextTC74 = WM_GetDialogItem(hWin, ID_TEXT_TC74);
+  WM_HWIN hTextThresh = WM_GetDialogItem(hWin, ID_TEXT_THRESH);
   
-  // Variable to hold the temperature 
   uint8_t temp = 0; 
+  char buf[30]; // Buffer for text writing
 
   while (1) {
-    // Read the I2C sensor to get the latest temperature 
-   // Temp_Read (&temp); 
+    // 1. Read live temperature
+    Temp_Read (&temp); 
 
-    // Update the Progress Bar directly with the raw temperature integer!
-    PROGBAR_SetValue(hProgbar, temp);
+    // 2. Update visual thermometer & label
+    PROGBAR_SetValue(hProgTC74, temp);
+    sprintf(buf, "%d C", temp);
+    TEXT_SetText(hTextTC74, buf);
+
+    // 3. Update the slider threshold label live
+    sprintf(buf, "Start Fan at: %d C", fan_threshold);
+    TEXT_SetText(hTextThresh, buf);
+
+    // 4. Dynamic Fan Logic
+    if (auto_mode == 1) {
+        // Automatically turn on if we pass the SLIDER's value
+        if (temp > fan_threshold) { 
+            vioSetSignal(vioLED1, vioLEDon);
+        } else {
+            vioSetSignal(vioLED1, vioLEDoff);
+        }
+    } else {
+        // Manually turn on/off based on button taps
+        if (manual_fan_state == 1) { 
+            vioSetSignal(vioLED1, vioLEDon);
+        } else {
+            vioSetSignal(vioLED1, vioLEDoff);
+        }
+    }
 
     GUI_TOUCH_Exec(); 
-    GUI_Exec();         /* Execute all GUI jobs ... Return 0 if nothing was done. */ 
-    GUI_X_ExecIdle();   /* Nothing left to do for the moment ... Idle processing */
+    GUI_Exec();         
+    GUI_X_ExecIdle();   
+		osDelay(100);
   }
 }
