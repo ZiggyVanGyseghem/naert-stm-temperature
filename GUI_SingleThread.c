@@ -12,7 +12,7 @@
 // The variables controlling the system
 int auto_mode = 1;         
 int manual_fan_state = 0;  
-int fan_threshold = 25; // Default starts at 25C
+int fan_threshold = 25; 
 
 extern WM_HWIN CreateLogViewer(void);
 
@@ -46,31 +46,28 @@ __NO_RETURN static void GUIThread (void *argument) {
   WM_HWIN hTextThresh = WM_GetDialogItem(hWin, ID_TEXT_THRESH);
   
   uint8_t temp = 0; 
-  char buf[30]; // Buffer for text writing
+  char buf[30]; 
+  
+  // --- ADDED: A counter to manage USB writing ---
+  int usb_timer = 0; 
 
   while (1) {
-    // 1. Read live temperature
     Temp_Read (&temp); 
 
-    // 2. Update visual thermometer & label
     PROGBAR_SetValue(hProgTC74, temp);
     sprintf(buf, "%d C", temp);
     TEXT_SetText(hTextTC74, buf);
 
-    // 3. Update the slider threshold label live
     sprintf(buf, "Start Fan at: %d C", fan_threshold);
     TEXT_SetText(hTextThresh, buf);
 
-    // 4. Dynamic Fan Logic
     if (auto_mode == 1) {
-        // Automatically turn on if we pass the SLIDER's value
         if (temp > fan_threshold) { 
             vioSetSignal(vioLED1, vioLEDon);
         } else {
             vioSetSignal(vioLED1, vioLEDoff);
         }
     } else {
-        // Manually turn on/off based on button taps
         if (manual_fan_state == 1) { 
             vioSetSignal(vioLED1, vioLEDon);
         } else {
@@ -81,6 +78,21 @@ __NO_RETURN static void GUIThread (void *argument) {
     GUI_TOUCH_Exec(); 
     GUI_Exec();         
     GUI_X_ExecIdle();   
-		osDelay(100);
+
+    // --- ADDED: USB Logging Logic  ---
+    usb_timer++;
+    if (usb_timer >= 50) { // 50 loops * 100ms = 5 seconds
+        usb_timer = 0; // Reset the timer
+        
+        // Open the text file on the USB stick (U0:) in "Append" mode ("a")
+        FILE *f = fopen("U0:\\templog.txt", "a");
+        if (f != NULL) {
+            // Write the current temperature and close the file
+            fprintf(f, "Temperature: %d C\n", temp);
+            fclose(f);
+        }
+    }
+
+    osDelay(100); 
   }
 }
